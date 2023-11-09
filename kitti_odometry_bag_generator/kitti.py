@@ -10,7 +10,7 @@ from cv_bridge import CvBridge
 from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import String
-from kitti_utils import KITTIOdometryDataset
+from kitti_utils.kitti_utils import KITTIOdometryDataset
 from pathlib import Path
 from nav_msgs.msg import Odometry
 
@@ -36,26 +36,23 @@ class Kitti_Odom(Node):
         self.right_img_publisher_ = self.create_publisher(Image, '/camera2/right/image_raw', 10)
         self.left_camera_info_publisher = self.create_publisher(CameraInfo, '/camera1/left/camera_info', 10)
         self.right_camera_info_publisher = self.create_publisher(CameraInfo, '/camera2/right/camera_info', 10)
-
         self.odom_publisher = self.create_publisher(Odometry,'/car_1/base/odom', 10)
+        self.publisher()
 
     def publisher(self):
         left_image = cv2.imread(self.left_imgs[self.counter])
         right_image = cv2.imread(self.right_imgs[self.counter])
         left_img_msg = self.bridge.cv2_to_imgmsg(left_image, encoding='passthrough')
         right_img_msg = self.bridge.cv2_to_imgmsg(right_image, encoding='passthrough')
+        print(self.kitti_dataset.odom_pose())
         self.get_logger().info("Published path")
-
-
-
-
         self.counter += 1
         return
 
 
 def main(args=None):
     rclpy.init(args=args)
-    node = Kitti_Odom()
+    node = Kitti_Odom(DATASET_DIR, ODOM_DIR, SEQUENCE)
     rclpy.spin(node)
     rclpy.shutdown()
 
