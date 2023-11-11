@@ -9,11 +9,11 @@ from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge
 from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import PoseStamped, TransformStamped, Pose, Point, Twist, TwistStamped
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, Path
 from std_msgs.msg import String
 from kitti_odometry_bag_generator.utils.kitti_utils import KITTIOdometryDataset
 from kitti_odometry_bag_generator.utils.quaternion import Quaternion
-from pathlib import Path
+# from pathlib import Path
 from nav_msgs.msg import Odometry
 import tf2_ros
 
@@ -25,7 +25,7 @@ ODOM_DIR = '/media/psf/SSD/DRONES_LAB/kitti_dataset/dataset_2'
 SEQUENCE = 0
 
 class Kitti_Odom(Node):
-    def __init__(self, data_dir: Path, odom_dir: Path, sequence: int):
+    def __init__(self, data_dir, odom_dir, sequence: int):
         super().__init__("kitti_odom")
         self.kitti_dataset = KITTIOdometryDataset(data_dir, odom_dir, sequence)
         # self.timer = self.create_timer(0.5, self.send_velocity_command)
@@ -34,7 +34,7 @@ class Kitti_Odom(Node):
         self.times_file = self.kitti_dataset.times_file()
         self.ground_truth = self.kitti_dataset.odom_pose()
         self.counter = 0
-        self.counter_limit = 1400
+        self.counter_limit = 4540
 
         self.bridge = CvBridge()
 
@@ -43,8 +43,8 @@ class Kitti_Odom(Node):
         self.left_camera_info_publisher = self.create_publisher(CameraInfo, '/camera1/left/camera_info', 10)
         self.right_camera_info_publisher = self.create_publisher(CameraInfo, '/camera2/right/camera_info', 10)
         self.odom_publisher = self.create_publisher(Odometry,'/car_1/base/odom', 10)
-        self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
-
+        self.path_publisher = self.create_publisher(Path, '/car_1/path', 10)
+        self.p_msg = Path()
         self.timer = self.create_timer(0.05, self.publish_callback)
 
     def publish_callback(self):
@@ -69,12 +69,27 @@ class Kitti_Odom(Node):
         odom_msg.header.frame_id = 'map'
         odom_msg.child_frame_id = 'base_link'
 
-        odom_msg.pose.pose.position = Point(x=translation[0], y=translation[1], z=translation[2])
+        odom_msg.pose.pose.position.x = translation[0]
+        odom_msg.pose.pose.position.y = translation[1] 
+        odom_msg.pose.pose.position.z = translation[2] 
         odom_msg.pose.pose.orientation.x = x
-        odom_msg.pose.pose.orientation.y = y
-        odom_msg.pose.pose.orientation.z = z
+        odom_msg.pose.pose.orientation.y = z
+        odom_msg.pose.pose.orientation.z = y
         odom_msg.pose.pose.orientation.w = w
 
+        pose = PoseStamped()
+        pose.pose.position.x = translation[0]
+        pose.pose.position.z = translation[1]
+        pose.pose.position.y = translation[2]
+        pose.pose.orientation.z = x
+        pose.pose.orientation.y = y
+        pose.pose.orientation.x = z
+        pose.pose.orientation.w = w
+        # pose.header.frame_id = "map"
+        
+        self.p_msg.poses.append(pose)
+        self.p_msg.header.frame_id = "map"
+        self.path_publisher.publish(self.p_msg)
 
         self.get_logger().info(f'{self.counter}-Images Processed')
 
