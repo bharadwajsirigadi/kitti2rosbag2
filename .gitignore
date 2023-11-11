@@ -159,7 +159,12 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+*.pyc
 utils/__pycache__
 kitti_odometry_bag_generator/__pycache__/
 kitti_odometry_bag_generator/__pycache__/kitti.cpython-310.pyc
 kitti_odometry_bag_generator/__pycache__/kitti.cpython-310.pyc
+kitti_odometry_bag_generator/__pycache__/__init__.cpython-310.pyc
+kitti_odometry_bag_generator/__pycache__/kitti.cpython-310.pyc
+utils/__pycache__/
+kitti_odometry_bag_generator/__pycache__/

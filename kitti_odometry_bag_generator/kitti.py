@@ -8,11 +8,14 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge
 from nav_msgs.msg import Odometry, Path
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TransformStamped, Pose, Point, Twist, TwistStamped
+from nav_msgs.msg import Odometry
 from std_msgs.msg import String
-from kitti_utils.kitti_utils import KITTIOdometryDataset
+from kitti_odometry_bag_generator.utils.kitti_utils import KITTIOdometryDataset
+from kitti_odometry_bag_generator.utils.quaternion import Quaternion
 from pathlib import Path
 from nav_msgs.msg import Odometry
+import tf2_ros
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
@@ -28,7 +31,10 @@ class Kitti_Odom(Node):
         # self.timer = self.create_timer(0.5, self.send_velocity_command)
         self.left_imgs = self.kitti_dataset.left_images()
         self.right_imgs = self.kitti_dataset.right_images()
+        self.times_file = self.kitti_dataset.times_file()
+        self.ground_truth = self.kitti_dataset.odom_pose()
         self.counter = 0
+        self.counter_limit = 1400
 
         self.bridge = CvBridge()
 
@@ -37,15 +43,49 @@ class Kitti_Odom(Node):
         self.left_camera_info_publisher = self.create_publisher(CameraInfo, '/camera1/left/camera_info', 10)
         self.right_camera_info_publisher = self.create_publisher(CameraInfo, '/camera2/right/camera_info', 10)
         self.odom_publisher = self.create_publisher(Odometry,'/car_1/base/odom', 10)
-        self.publisher()
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
-    def publisher(self):
+        self.timer = self.create_timer(0.05, self.publish_callback)
+
+    def publish_callback(self):
+        # retrieving images and creating msg
         left_image = cv2.imread(self.left_imgs[self.counter])
         right_image = cv2.imread(self.right_imgs[self.counter])
-        left_img_msg = self.bridge.cv2_to_imgmsg(left_image, encoding='passthrough')
-        right_img_msg = self.bridge.cv2_to_imgmsg(right_image, encoding='passthrough')
-        print(self.kitti_dataset.odom_pose())
-        self.get_logger().info("Published path")
+        left_img_msg = self.bridge.cv2_to_imgmsg(left_image, encoding='bgr8')
+        right_img_msg = self.bridge.cv2_to_imgmsg(right_image, encoding='bgr8')
+
+        # retrieving clock_time and creating msg
+        clock_time = self.times_file[self.counter]
+        odom_msg = Odometry()
+        odom_msg.header.stamp.sec = int(clock_time)
+        odom_msg.header.stamp.nanosec = int((clock_time - int(clock_time)) * 1e9)
+
+        # retrieving and creating ground truth msg
+        # print(self.ground_truth[self.counter])
+        quaternion = Quaternion(self.ground_truth[self.counter])
+        x, y, z, w = quaternion.transformation_to_quaternion()
+
+        translation = self.ground_truth[self.counter][:3,3]
+        odom_msg.header.frame_id = 'map'
+        odom_msg.child_frame_id = 'base_link'
+
+        odom_msg.pose.pose.position = Point(x=translation[0], y=translation[1], z=translation[2])
+        odom_msg.pose.pose.orientation.x = x
+        odom_msg.pose.pose.orientation.y = y
+        odom_msg.pose.pose.orientation.z = z
+        odom_msg.pose.pose.orientation.w = w
+
+
+        self.get_logger().info(f'{self.counter}-Images Processed')
+
+        if self.counter >= self.counter_limit:
+            self.get_logger().info('All images and poses published. Stopping...')
+            self.timer.cancel()
+        
+        self.left_img_publisher_.publish(left_img_msg)
+        self.right_img_publisher_.publish(right_img_msg)
+        self.odom_publisher.publish(odom_msg)
+
         self.counter += 1
         return
 
