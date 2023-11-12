@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "kitti_odom = kitti_odometry_bag_generator.kitti:main"
+            "kitti_odom = kitti_odometry_bag_generator.kitti_pub:main",
+            "kitti_sub = kitti_odometry_bag_generator.kitti_sub:main"
         ],
     },
 )
