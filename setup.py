@@ -21,7 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
             "kitti_odom = kitti_odometry_bag_generator.kitti_pub:main",
-            "kitti_sub = kitti_odometry_bag_generator.kitti_sub:main"
+            "kitti_sub = kitti_odometry_bag_generator.kitti_sub:main",
+            "mono_node = kitti_odometry_bag_generator.mono_vo:main"
         ],
     },
 )
