@@ -4,7 +4,7 @@ import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry, Path
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseStamped, Point, TransformStamped
+from geometry_msgs.msg import PoseStamped, Point, TransformStamped, Pose
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from visualization_msgs.msg import Marker
@@ -14,7 +14,6 @@ import numpy as np
 import message_filters
 from kitti_odometry_bag_generator.utils.kitti_utils import KITTIOdometryDataset
 from kitti_odometry_bag_generator.utils.quaternion import Quaternion
-
 from tf2_ros import TransformBroadcaster
 from tf2_ros import StaticTransformBroadcaster
 from tf2_geometry_msgs import do_transform_point, do_transform_vector3
@@ -23,18 +22,17 @@ DATASET_DIR = "/media/psf/SSD/DRONES_LAB/kitti_dataset/dataset"
 ODOM_DIR = '/media/psf/SSD/DRONES_LAB/kitti_dataset/dataset_2'
 SEQUENCE = 0
 
-
 MAX_FRAMES = 1000 # Max frames in dataset
-MIN_FEATURES = 500 # Minimum number of features for reliable relative pose between frames
+MIN_FEATURES = 50 # Minimum number of features for reliable relative pose between frames
 
 class ComputeOdom():
     def __init__(self, data_dir, odom_dir, sequence):
-        self.fc = 718.8560
-        self.pp = (607.1928, 185.2157)
         kitti_dataset = KITTIOdometryDataset(data_dir, odom_dir, sequence)
         self.p = kitti_dataset.projection_matrix(0)
         self.fc = self.p[0,0]
+        print(self.fc)
         self.pp = (self.p[0,3], self.p[1,3])
+        print(self.pp)
         pass
 
     def featureTracking(self, image_1, image_2, points_1):
@@ -112,12 +110,10 @@ class MonoVO(Node):
 
             r_Matrix, t_Vec, valid =  Odometry.monoVO(prev_image, left_img, self.min_features)
             if valid == True:
-                # r_Matrix = cv2.Rodrigues(r_Matrix)[0]
                 self.translation_vector = self.translation_vector + self.rotation_matrix.dot(t_Vec)
                 self.rotation_matrix = self.rotation_matrix.dot(r_Matrix)
                 self.prev_image = left_img_msg                                                                                                                                                                                                                                 
-                self.plotTraj(r_Matrix, t_Vec)
-                print(r_Matrix)
+                self.plotTraj(self.rotation_matrix, self.translation_vector)
         return
 
     def plotTraj(self, r_Matrix, t_Vec):
@@ -129,35 +125,36 @@ class MonoVO(Node):
 
         static_transform = TransformStamped()
         static_transform.header.stamp = self.get_clock().now().to_msg()
-        static_transform.header.frame_id = "map"  # Set your fixed frame
-        static_transform.child_frame_id = "odom"  # Set your odometry frame
+        static_transform.header.frame_id = "map"  
+        static_transform.child_frame_id = "odom" 
         static_transform.transform.translation.x = 0.0
         static_transform.transform.translation.y = 0.0
         static_transform.transform.translation.z = 0.0
-
         self.static_tf_broadcaster.sendTransform(static_transform)
 
-        # Start publishing odometry messages and transforms
-        # self.publish_odom_and_tf(self.odom_msg)
+        transformation_mtx = np.eye(4, dtype=float)
+        transformation_mtx[:3, :3] = r_Matrix
+        transformation_mtx[:3, 3] = t_Vec.flatten()
+        # print(transformation_mtx)
 
-        self.points.id = 0
-        self.points.type = Marker.LINE_STRIP
-        self.points.header.frame_id = "visualizing_pose"
-        self.points.header.stamp = self.get_clock().now().to_msg()
-        self.points.action = Marker.ADD
-        self.points.pose.orientation.w = 1.0
-        self.points.scale.x = 0.5
-        self.points.scale.y = 0.5
-        self.points.color.b = 2.0
-        self.points.color.a = 2.0
+        quaternion = Quaternion(transformation_mtx)
+        x, y, z, w = quaternion.transformation_to_quaternion()
 
-        trajectory =Point()
-        trajectory.x = float(coord[0,0])
-        trajectory.y = float(coord[2,0])
-        trajectory.z = 0.0
+        pose = PoseStamped()
+        pose.pose.position.x = t_Vec[0,0]
+        pose.pose.position.y = t_Vec[1,0]
+        # pose.pose.position.z = t_Vec[2,0]
+        # pose.pose.orientation.x = x
+        # pose.pose.orientation.y = y
+        # pose.pose.orientation.z = z
+        # pose.pose.orientation.w = w
+        self.p_msg.poses.append(pose)
+        self.p_msg.header.frame_id = "odom"
+        # print(pose)
+        self.path_publisher.publish(self.p_msg)
 
-        self.points.points.append(trajectory)
-        self.plot_Trajectory.publish(self.points)
+    def new_method(self):
+        return 4
     
 def main(args=None):
     rclpy.init(args=args)

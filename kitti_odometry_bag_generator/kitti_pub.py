@@ -19,24 +19,35 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from tf2_ros import TransformListener, Buffer
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
+from rclpy.parameter import ParameterType
 
 DATASET_DIR = "/media/psf/SSD/DRONES_LAB/kitti_dataset/dataset"
 ODOM_DIR = '/media/psf/SSD/DRONES_LAB/kitti_dataset/dataset_2'
-SEQUENCE = 0
+SEQUENCE = 4
 
 class Kitti_Odom(Node):
     def __init__(self, data_dir, odom_dir, sequence: int):
         super().__init__("kitti_odom")
+        self.declare_parameter('sequence', '4')
+        # Get the parameter value
+        parameter_value = self.get_parameter('sequence').get_parameter_value().string_value
+        self.get_logger().info('Parameter value:-------------------- %s' % parameter_value)
+
         self.kitti_dataset = KITTIOdometryDataset(data_dir, odom_dir, sequence)
         self.bridge = CvBridge()
 
         self.counter = 0
-        self.counter_limit = 4540
+        self.counter_limit = len(self.kitti_dataset.left_images()) - 1 
         
         self.left_imgs = self.kitti_dataset.left_images()
         self.right_imgs = self.kitti_dataset.right_images()
         self.times_file = self.kitti_dataset.times_file()
-        self.ground_truth = self.kitti_dataset.odom_pose()
+        try:
+            self.ground_truth = self.kitti_dataset.odom_pose()
+        except FileNotFoundError as filenotfounderror:
+            self.get_logger().error("Error: {}".format(filenotfounderror))
+            rclpy.shutdown()
+            return
 
         self.timer = self.create_timer(0.05, self.publish_callback)
         self.left_img_publisher_ = self.create_publisher(Image, '/camera1/left/image_raw', 10)
@@ -48,37 +59,10 @@ class Kitti_Odom(Node):
 
         self.static_tf_broadcaster = StaticTransformBroadcaster(self)
 
-    def rotationMatrixToQuaternion(self, m):
-        t = np.matrix.trace(m)
-        q = np.asarray([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
-
-        if(t > 0):
-            t = np.sqrt(t + 1)
-            q[0] = 0.5 * t
-            t = 0.5/t
-            q[1] = (m[2,1] - m[1,2]) * t
-            q[2] = (m[0,2] - m[2,0]) * t
-            q[3] = (m[1,0] - m[0,1]) * t
-
-        else:
-            i = 0
-            if (m[1,1] > m[0,0]):
-                i = 1
-            if (m[2,2] > m[i,i]):
-                i = 2
-            j = (i+1)%3
-            k = (j+1)%3
-
-            t = np.sqrt(m[i,i] - m[j,j] - m[k,k] + 1)
-            q[i] = 0.5 * t
-            t = 0.5 / t
-            q[0] = (m[k,j] - m[j,k]) * t
-            q[j] = (m[j,i] + m[i,j]) * t
-            q[k] = (m[k,i] + m[i,k]) * t
-
-        return q
-
     def publish_callback(self):
+
+        # print("hello:", len(self.kitti_dataset.left_images()))
+        
         # retrieving images and creating msg
         left_image = cv2.imread(self.left_imgs[self.counter])
         right_image = cv2.imread(self.right_imgs[self.counter])
@@ -92,12 +76,11 @@ class Kitti_Odom(Node):
         odom_msg.header.stamp.nanosec = int((clock_time - int(clock_time)) * 1e9)
 
         # retrieving and creating ground truth msg
-        quaternion = Quaternion(self.ground_truth[self.counter])
-        x, y, z, w = quaternion.transformation_to_quaternion()
+        # print(len(self.kitti_dataset.left_images()))
         translation = self.ground_truth[self.counter][:3,3]
-        a = self.rotationMatrixToQuaternion(self.ground_truth[self.counter][:3, :3])
-        # print(a)
-        # odom_msg.header.frame_id = "odom"
+        quaternion = Quaternion()
+        a = quaternion.rotationmtx_to_quaternion(self.ground_truth[self.counter][:3, :3])
+
         odom_msg.pose.pose.position.z = -translation[1]
         odom_msg.pose.pose.position.y = -translation[2] 
         odom_msg.pose.pose.position.x = -translation[0] 
@@ -110,24 +93,21 @@ class Kitti_Odom(Node):
 
         if self.counter >= self.counter_limit:
             self.get_logger().info('All images and poses published. Stopping...')
+            rclpy.shutdown()
             self.timer.cancel()
         
         self.left_img_publisher_.publish(left_img_msg)
         self.right_img_publisher_.publish(right_img_msg)
         self.odom_publisher.publish(odom_msg)
 
-        # Broadcast the static transform (adjust the values as needed)
+        # Broadcast the static transform
         static_transform = TransformStamped()
         static_transform.header.stamp = self.get_clock().now().to_msg()
-        static_transform.header.frame_id = "map"  # Set your fixed frame
-        static_transform.child_frame_id = "odom"  # Set your odometry frame
+        static_transform.header.frame_id = "map" 
+        static_transform.child_frame_id = "odom"
         static_transform.transform.translation.x = 0.0
         static_transform.transform.translation.y = 0.0
         static_transform.transform.translation.z = 0.0
-        # static_transform.transform.rotation.x = 0.0
-        # static_transform.transform.rotation.y = 0.0
-        # static_transform.transform.rotation.z = 0.0
-        # static_transform.transform.rotation.w = 1.0
         self.static_tf_broadcaster.sendTransform(static_transform)
 
         self.counter += 1
@@ -136,8 +116,13 @@ class Kitti_Odom(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = Kitti_Odom(DATASET_DIR, ODOM_DIR, SEQUENCE)
+    sequence_param = node.get_parameter('sequence')
+    sequence_value = sequence_param.value
     rclpy.spin(node)
-    rclpy.shutdown()
+    try:
+        rclpy.shutdown()
+    except Exception as e:
+        pass
 
 if __name__ == '__main__':
     main()
