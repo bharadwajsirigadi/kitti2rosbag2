@@ -3,13 +3,45 @@ import numpy as np
 
 
 class Quaternion():
-    def __init__(self, transformation_matrix) -> None:
+    def __init__(self) -> None:
         # transformation_matrix = 4*4(homogenous transformation matrix)
-        self.rotation_matrix = transformation_matrix[:3, :3]
-        self.translation_matrix = transformation_matrix[:3, 3]
+        # self.rotation_matrix = transformation_matrix[:3, :3]
+        # self.translation_matrix = transformation_matrix[:3, 3]
         pass
 
-    def transformation_to_quaternion(self):
+    def rotationmtx_to_quaternion(self, m):
+        t = np.matrix.trace(m)
+        q = np.asarray([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
+
+        if(t > 0):
+            t = np.sqrt(t + 1)
+            q[0] = 0.5 * t
+            t = 0.5/t
+            q[1] = (m[2,1] - m[1,2]) * t
+            q[2] = (m[0,2] - m[2,0]) * t
+            q[3] = (m[1,0] - m[0,1]) * t
+
+        else:
+            i = 0
+            if (m[1,1] > m[0,0]):
+                i = 1
+            if (m[2,2] > m[i,i]):
+                i = 2
+            j = (i+1)%3
+            k = (j+1)%3
+
+            t = np.sqrt(m[i,i] - m[j,j] - m[k,k] + 1)
+            q[i] = 0.5 * t
+            t = 0.5 / t
+            q[0] = (m[k,j] - m[j,k]) * t
+            q[j] = (m[j,i] + m[i,j]) * t
+            q[k] = (m[k,i] + m[i,k]) * t
+
+        return q
+
+    def transformation_to_quaternion(self, transformation_matrix):
+        rotation_matrix = transformation_matrix[:3, :3]
+        translation_matrix = transformation_matrix[:3, 3]
         # r11 = self.rotation_matrix[0,0]
         # r12 = self.rotation_matrix[0,1]
         # r13 = self.rotation_matrix[0,2]
@@ -79,9 +111,9 @@ class Quaternion():
         #     q3 = q_lst[3]
         # return q0, q1, q2, q3
     
-        r11, r12, r13 = self.rotation_matrix[0, 0], self.rotation_matrix[0, 1], self.rotation_matrix[0, 2]
-        r21, r22, r23 = self.rotation_matrix[1, 0], self.rotation_matrix[1, 1], self.rotation_matrix[1, 2]
-        r31, r32, r33 = self.rotation_matrix[2, 0], self.rotation_matrix[2, 1], self.rotation_matrix[2, 2]
+        r11, r12, r13 = rotation_matrix[0, 0], rotation_matrix[0, 1], rotation_matrix[0, 2]
+        r21, r22, r23 = rotation_matrix[1, 0], rotation_matrix[1, 1], rotation_matrix[1, 2]
+        r31, r32, r33 = rotation_matrix[2, 0], rotation_matrix[2, 1], rotation_matrix[2, 2]
 
         q_0n = ((1 + r11 + r22 + r33) / 4)
         q_1n = ((1 - r11 + r22 - r33) / 4)
@@ -132,8 +164,8 @@ def main():
                                      [float(2.326810e-11), float(2.392370e-10),float(9.999999e-01), float(-4.440892e-16)],
                                      [0, 0, 0, 1]])
     print(transformation_matrix)
-    q = Quaternion(transformation_matrix)
-    print(q.transformation_to_quaternion())
+    q = Quaternion()
+    print(q.transformation_to_quaternion(transformation_matrix))
     return
 
 if __name__ == "__main__":
