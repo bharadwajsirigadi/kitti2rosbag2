@@ -125,6 +125,8 @@ class KITTIOdometryDataset():
         return np.array(matrix)
     
     def odom_pose(self):
+        if not os.path.exists(self.odom_dir):
+            raise FileNotFoundError(f"Odom directory not found: {self.odom_dir}, Ground truth(Odometry) is available for only 10 sequences in KITTI. Stopping the process.")
         with open(self.odom_dir, 'r') as file:
             lines = file.readlines()
         transformation_data = [[float(val) for val in line.split()] for line in lines]
