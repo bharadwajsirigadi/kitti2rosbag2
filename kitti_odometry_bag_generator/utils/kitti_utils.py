@@ -1,4 +1,3 @@
-import rclpy
 import time
 import os
 import numpy as np
@@ -14,9 +13,10 @@ RIGHT_IMG_FOLDER = "image_3"
 # DISTANCE = 0.54meters
 
 class KITTIOdometryDataset():
-    def __init__(self, data_dir, odom_dir, sequence: int, *_, **__) -> None:
+    def __init__(self, data_dir, sequence: int, odom_dir = None,  *_, **__) -> None:
         self.kitti_sequence_dir = os.path.join(data_dir, "sequences", f'{sequence:02d}')
-        self.odom_dir = os.path.join(odom_dir, 'poses', f'{sequence:02d}.txt')
+        if odom_dir is not None:
+            self.odom_dir = os.path.join(odom_dir, 'poses', f'{sequence:02d}.txt')
         self.left_cam_sequence_dir = os.path.join(self.kitti_sequence_dir, LEFT_IMG_FOLDER)
         self.right_cam_sequence_dir = os.path.join(self.kitti_sequence_dir, RIGHT_IMG_FOLDER)
         self.calib_file = os.path.join(self.kitti_sequence_dir,"calib.txt")

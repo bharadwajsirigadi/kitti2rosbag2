@@ -2,54 +2,58 @@
 
 import rclpy
 import numpy as np
-import message_filters
 import cv2
-import pathlib
 from rclpy.node import Node
 from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge
 from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import PoseStamped, TransformStamped, Pose, Point, Twist, TwistStamped
 from nav_msgs.msg import Odometry, Path
-from std_msgs.msg import String
 from kitti_odometry_bag_generator.utils.kitti_utils import KITTIOdometryDataset
 from kitti_odometry_bag_generator.utils.quaternion import Quaternion
 from nav_msgs.msg import Odometry
-from tf2_ros import TransformListener, Buffer
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
-from tf2_ros import TransformListener, Buffer
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
-from rclpy.parameter import ParameterType
-
-DATASET_DIR = "/media/psf/SSD/DRONES_LAB/kitti_dataset/dataset"
-ODOM_DIR = '/media/psf/SSD/DRONES_LAB/kitti_dataset/dataset_2'
-SEQUENCE = 12
-ODOM = False
 
 class Kitti_Odom(Node):
-    def __init__(self, data_dir, odom_dir, sequence: int, odom):
-        super().__init__("kitti_odom")
-        self.declare_parameter('sequence', int(0))
-        self.declare_parameter('data_dir', "/media/psf/SSD/DRONES_LAB/kitti_dataset/dataset")
-        self.declare_parameter('odom_dir', "/media/psf/SSD/DRONES_LAB/kitti_dataset/dataset_2")
-        # Get the parameter value
-        sequence = self.get_parameter('sequence').get_parameter_value().integer_value
-        data_dir = pathlib.Path(self.get_parameter('data_dir').get_parameter_value().string_value)
-        odom_dir = pathlib.Path(self.get_parameter('odom_dir').get_parameter_value().string_value)
+    def __init__(self):
+        super().__init__("kitti_pub")
+        self.declare_parameters(
+            namespace='',
+            parameters=[
+                ('sequence', rclpy.Parameter.Type.INTEGER),
+                ('data_dir', rclpy.Parameter.Type.STRING),
+                ('odom', rclpy.Parameter.Type.BOOL),
+                ('odom_dir', rclpy.Parameter.Type.STRING)
+            ]
+        )
 
-        self.kitti_dataset = KITTIOdometryDataset(data_dir, odom_dir, sequence)
+        sequence = self.get_parameter('sequence').value
+        self.get_logger().info(f'SEQUENCE:={sequence}')
+
+        data_dir = self.get_parameter('data_dir').get_parameter_value().string_value
+        self.get_logger().info(f'DATA_DIR:={data_dir}')
+
+        odom = self.get_parameter('odom').value
+        self.get_logger().info(f'ODOM:={odom}')
+  
+        if odom == True:
+            odom_dir = self.get_parameter('odom_dir').get_parameter_value().string_value
+            self.get_logger().info(f'ODOM_DIR:={odom_dir}')
+        else:
+            odom_dir = None
+
+        self.kitti_dataset = KITTIOdometryDataset(data_dir, sequence, odom_dir)
         self.bridge = CvBridge()
-        self.odom_trigger = odom
-
-        print('SEQUENCE:', sequence)
-
+        # self.get_logger().info('came here')
         self.counter = 0
         self.counter_limit = len(self.kitti_dataset.left_images()) - 1 
         
         self.left_imgs = self.kitti_dataset.left_images()
         self.right_imgs = self.kitti_dataset.right_images()
         self.times_file = self.kitti_dataset.times_file()
+        self.odom_trigger = odom
         if self.odom_trigger == True:
             try:
                 self.ground_truth = self.kitti_dataset.odom_pose()
@@ -69,14 +73,12 @@ class Kitti_Odom(Node):
         self.static_tf_broadcaster = StaticTransformBroadcaster(self)
 
     def publish_callback(self):
-
-        # print("hello:", len(self.kitti_dataset.left_images()))
         
         # retrieving images and creating msg
         left_image = cv2.imread(self.left_imgs[self.counter])
         right_image = cv2.imread(self.right_imgs[self.counter])
-        left_img_msg = self.bridge.cv2_to_imgmsg(left_image, encoding='rgb8')
-        right_img_msg = self.bridge.cv2_to_imgmsg(right_image, encoding='bgr8')
+        left_img_msg = self.bridge.cv2_to_imgmsg(left_image, encoding='passthrough')
+        right_img_msg = self.bridge.cv2_to_imgmsg(right_image, encoding='passthrough')
 
         # retrieving clock_time and creating msg
         clock_time = self.times_file[self.counter]
@@ -85,7 +87,6 @@ class Kitti_Odom(Node):
         odom_msg.header.stamp.nanosec = int((clock_time - int(clock_time)) * 1e9)
 
         # retrieving and creating ground truth msg
-        # print(len(self.kitti_dataset.left_images()))
         if self.odom_trigger == True:
 
             translation = self.ground_truth[self.counter][:3,3]
@@ -127,7 +128,7 @@ class Kitti_Odom(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = Kitti_Odom(DATASET_DIR, ODOM_DIR, SEQUENCE, odom=ODOM)
+    node = Kitti_Odom()
     rclpy.spin(node)
     try:
         rclpy.shutdown()
