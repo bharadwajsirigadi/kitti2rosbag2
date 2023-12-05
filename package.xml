@@ -3,9 +3,9 @@
 <package format="3">
   <name>kitti_odometry_bag_generator</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="parallels@todo.todo">parallels</maintainer>
-  <license>TODO: License declaration</license>
+  <description>KITTI odometry to ROS2 bag converter</description>
+  <maintainer email="bharadwajsirigadi@gmail.com">bharadwajsirigadi</maintainer>
+  <license>Apache</license>
 
   <depend>rclpy</depend>
   <depend>geometry_msgs</depend>

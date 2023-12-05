@@ -1,12 +1,11 @@
 from setuptools import find_packages, setup
-import os
 from glob import glob
 
 package_name = 'kitti_odometry_bag_generator'
 
 setup(
     name=package_name,
-    version='0.0.0',
+    version='1.0.0',
     packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
@@ -17,10 +16,10 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='parallels',
-    maintainer_email='parallels@todo.todo',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    maintainer='bharadwajsirigadi',
+    maintainer_email='bharadwajsirigadi@gmail.com',
+    description='KITTI odometry to ROS2 bag converter',
+    license='Apache License',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
