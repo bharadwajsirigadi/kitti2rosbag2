@@ -65,10 +65,7 @@ class Kitti_Odom(Node):
         self.timer = self.create_timer(0.05, self.publish_callback)
         self.left_img_publisher_ = self.create_publisher(Image, '/camera1/left/image_raw', 10)
         self.right_img_publisher_ = self.create_publisher(Image, '/camera2/right/image_raw', 10)
-        self.left_camera_info_publisher = self.create_publisher(CameraInfo, '/camera1/left/camera_info', 10)
-        self.right_camera_info_publisher = self.create_publisher(CameraInfo, '/camera2/right/camera_info', 10)
         self.odom_publisher = self.create_publisher(Odometry,'/car_1/base/odom', 10)
-        self.path_publisher = self.create_publisher(Path, '/car_1/path', 10)
 
         self.static_tf_broadcaster = StaticTransformBroadcaster(self)
 
