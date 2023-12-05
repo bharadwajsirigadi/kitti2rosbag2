@@ -14,6 +14,7 @@ class SimpleBagRecorder(Node):
     def __init__(self):
         self.counter = 0
         super().__init__('kitti_rec')
+        qos_profile = rclpy.qos.qos_profile_sensor_data
         self.get_logger().info("Node initialized")
         self.writer = rosbag2_py.SequentialWriter()
 
@@ -32,50 +33,38 @@ class SimpleBagRecorder(Node):
         self.writer.create_topic(left_cam_info_topic_info)
         self.writer.create_topic(right_cam_info_topic_info)
         self.writer.create_topic(odom_topic_info)
+        
+        self.left_img_sub = self.create_subscription(Image, '/camera1/left/image_raw', self.left_img_callback, 10)
+        self.right_img_sub = self.create_subscription(Image, '/camera2/right/image_raw', self.right_img_callback, 10)
+        self.left_cam_info_sub = self.create_subscription(CameraInfo, '/camera1/left/camera_info', self.left_cam_info_callback, 10)
+        self.right_cam_info_sub = self.create_subscription(CameraInfo, '/camera2/right/camera_info', self.right_cam_info_callback, 10)
+        self.odom_sub = self.create_subscription(Odometry, '/car_1/base/odom', self.odom_callback, 10)
         self.get_logger().info(f'Subscribed')
 
-        left_img_sub = Subscriber(self, Image, '/camera1/left/image_raw')
-        right_img_sub= Subscriber(self, Image, '/camera2/right/image_raw')
-        # left_cam_info_sub = Subscriber(self, CameraInfo, '/camera1/left/camera_info')
-        # right_cam_info_sub = Subscriber(self, CameraInfo, '/camera2/right/camera_info')
-        odom_sub = Subscriber(self, Odometry, '/car_1/base/odom')
-
-        ts = TimeSynchronizer([left_img_sub, right_img_sub, odom_sub], 10)
-        self.get_logger().info("TimeSynchronizer created")
-
-        ts.registerCallback(self.topic_callback)
-        self.get_logger().info("Callback registered")
-
-        # self.left_img_sub = self.create_subscription(Image, '/camera1/left/image_raw',)
-
-        topics = {
-            '/camera1/left/image_raw': Image,
-            '/camera2/right/image_raw': Image,
-            '/camera1/left/camera_info': CameraInfo,
-            '/camera2/right/camera_info': CameraInfo,
-            '/car_1/base/odom' : Odometry,
-        }
-
-        for topic, msg_type in topics.items():
-            topic_info = rosbag2_py._storage.TopicMetadata(
-                name=topic,
-                type=f'{msg_type.__module__}/msg/{msg_type.__name__}',
-                serialization_format='cdr')
-            self.writer.create_topic(topic_info)
-
-    def topic_callback(self, left_img_msg, right_img_msg, odom_msg):
-        timestamp = self.get_clock().now().nanoseconds
-        self.get_logger().info(f'Recorded')
-        self.writer.write('/camera1/left/image_raw', left_img_msg, timestamp)
-        self.writer.write('/camera2/right/image_raw', right_img_msg, timestamp)
-        # self.writer.write('/camera1/left/camera_info', left_cam_info, timestamp)
-        # self.writer.write('/camera2/right/camera_info', right_cam_info, timestamp)
-        self.writer.write('/car_1/base/odom', odom_msg, timestamp)
-        self.counter += 1
-
     def left_img_callback(self, msg):
-        self.get_logger().info(f'Recorded')
+        timestamp = self.get_clock().now().nanoseconds
+        self.writer.write('/camera1/left/image_raw', serialize_message(msg), timestamp)
+        self.get_logger().info(f'Recorded left_img')
 
+    def right_img_callback(self, msg):
+        timestamp = self.get_clock().now().nanoseconds
+        self.writer.write('/camera2/right/image_raw', serialize_message(msg), timestamp)
+        self.get_logger().info(f'Recorded right_img')
+
+    def left_cam_info_callback(self, msg):
+        timestamp = self.get_clock().now().nanoseconds
+        self.writer.write('/camera1/left/camera_info', serialize_message(msg), timestamp)
+        self.get_logger().info(f'Recorded left_cam_info')
+
+    def right_cam_info_callback(self, msg):
+        timestamp = self.get_clock().now().nanoseconds
+        self.writer.write('/camera2/right/camera_info', serialize_message(msg), timestamp)
+        self.get_logger().info(f'Recorded right_cam_info')
+
+    def odom_callback(self, msg):
+        timestamp = self.get_clock().now().nanoseconds
+        self.writer.write('/car_1/base/odom', serialize_message(msg), timestamp)
+        self.get_logger().info(f'Recorded odom')
 
     def cleanup(self):
         if self.writer.is_open():
