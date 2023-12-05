@@ -2,12 +2,11 @@
 
 import os
 import rclpy
-from pathlib import Path
 from rclpy.node import Node
 from rclpy.serialization import serialize_message
 import rosbag2_py
 from sensor_msgs.msg import Image, CameraInfo
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, Path
 
 class BagRecorder(Node):
     def __init__(self):
@@ -34,18 +33,21 @@ class BagRecorder(Node):
 
         left_img_topic_info = rosbag2_py._storage.TopicMetadata(name='/camera1/left/image_raw', type='sensor_msgs/msg/Image', serialization_format='cdr')
         right_img_topic_info = rosbag2_py._storage.TopicMetadata(name='/camera2/right/image_raw', type='sensor_msgs/msg/Image', serialization_format='cdr')
+        odom_path_topic_info = rosbag2_py._storage.TopicMetadata(name='/car_1/odom_path', type='nav_msgs/msg/Path', serialization_format='cdr')
         left_cam_info_topic_info = rosbag2_py._storage.TopicMetadata(name='/camera1/left/camera_info', type='sensor_msgs/msg/CameraInfo', serialization_format='cdr')
         right_cam_info_topic_info = rosbag2_py._storage.TopicMetadata(name='/camera2/right/camera_info', type='sensor_msgs/msg/CameraInfo', serialization_format='cdr')
         odom_topic_info = rosbag2_py._storage.TopicMetadata(name='/car_1/base/odom', type='nav_msgs/msg/Odometry', serialization_format='cdr')
 
         self.writer.create_topic(left_img_topic_info)
         self.writer.create_topic(right_img_topic_info)
+        self.writer.create_topic(odom_path_topic_info)
         self.writer.create_topic(left_cam_info_topic_info)
         self.writer.create_topic(right_cam_info_topic_info)
         self.writer.create_topic(odom_topic_info)
         
         self.left_img_sub = self.create_subscription(Image, '/camera1/left/image_raw', self.left_img_callback, 10)
         self.right_img_sub = self.create_subscription(Image, '/camera2/right/image_raw', self.right_img_callback, 10)
+        self.odom_path_sub = self.create_subscription(Path, 'car_1/odom_path', self.odom_path_callback, 10)
         self.left_cam_info_sub = self.create_subscription(CameraInfo, '/camera1/left/camera_info', self.left_cam_info_callback, 10)
         self.right_cam_info_sub = self.create_subscription(CameraInfo, '/camera2/right/camera_info', self.right_cam_info_callback, 10)
         self.odom_sub = self.create_subscription(Odometry, '/car_1/base/odom', self.odom_callback, 10)
@@ -60,6 +62,11 @@ class BagRecorder(Node):
         timestamp = self.get_clock().now().nanoseconds
         self.writer.write('/camera2/right/image_raw', serialize_message(msg), timestamp)
         # self.get_logger().info(f'Recorded right_img')
+
+    def odom_path_callback(self, msg):
+        timestamp = self.get_clock().now().nanoseconds
+        self.writer.write('/car_1/odom_path', serialize_message(msg), timestamp)
+        # self.get_logger().info(f'Recorded odom_path')
 
     def left_cam_info_callback(self, msg):
         timestamp = self.get_clock().now().nanoseconds

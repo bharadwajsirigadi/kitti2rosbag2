@@ -7,7 +7,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge
 from nav_msgs.msg import Odometry, Path
-from geometry_msgs.msg import PoseStamped, TransformStamped, Pose, Point, Twist, TwistStamped
+from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import Odometry, Path
 from kitti_odometry_bag_generator.utils.kitti_utils import KITTIOdometryDataset
 from kitti_odometry_bag_generator.utils.quaternion import Quaternion
@@ -30,17 +30,17 @@ class Kitti_Odom(Node):
         )
 
         sequence = self.get_parameter('sequence').value
-        self.get_logger().info(f'SEQUENCE:={sequence}')
+        # self.get_logger().info(f'SEQUENCE:={sequence}')
 
         data_dir = self.get_parameter('data_dir').get_parameter_value().string_value
-        self.get_logger().info(f'DATA_DIR:={data_dir}')
+        # self.get_logger().info(f'DATA_DIR:={data_dir}')
 
         odom = self.get_parameter('odom').value
-        self.get_logger().info(f'ODOM:={odom}')
-  
+        # self.get_logger().info(f'ODOM:={odom}')
+
         if odom == True:
             odom_dir = self.get_parameter('odom_dir').get_parameter_value().string_value
-            self.get_logger().info(f'ODOM_DIR:={odom_dir}')
+            # self.get_logger().info(f'ODOM_DIR:={odom_dir}')
         else:
             odom_dir = None
 
@@ -112,7 +112,6 @@ class Kitti_Odom(Node):
         self.left_img_publisher_.publish(left_img_msg)
         self.right_img_publisher_.publish(right_img_msg)
         
-
         # Broadcast the static transform
         static_transform = TransformStamped()
         static_transform.header.stamp = self.get_clock().now().to_msg()

@@ -14,7 +14,6 @@ class kitti_sub(Node):
         self.p_msg = Path()
 
     def subscribe_callback(self, odom_msg):
-        print("called")
         pose= PoseStamped()
         pose.pose = odom_msg.pose.pose
         pose.header.frame_id = "odom"
