@@ -26,7 +26,7 @@ kitti_pub:
 
 kitti_rec:
   ros__parameters:
-    bag_dir : <bag_dir>
+    bag_dir : <bag_dir>/<bag_name>
 ```
 Example:
 ```
