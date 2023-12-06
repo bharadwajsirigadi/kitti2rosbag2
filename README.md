@@ -46,11 +46,11 @@ kitti_rec:
 cd ~/ros2_ws
 ```
 ```
-colcon build kitti_odometry_bag_generator --symlink-install
+colcon build kitti2rosbag2 --symlink-install
 ```
 #### 4. Converting to bag
 ```
-roslaunch kitti_odometry_bag_generator kitti2rosbag2.launch
+ros2 launch kitti2rosbag2 kitti2rosbag2.launch
 ```
 [KITTI Odometry Dataset Folder Structure](https://github.com/bharadwajsirigadi/kitti2rosbag2/wiki)
 
