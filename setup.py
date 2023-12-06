@@ -23,10 +23,10 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "kitti_pub_node = kitti_odometry_bag_generator.kitti_pub:main",
-            "kitti_sub = kitti_odometry_bag_generator.kitti_sub:main",
-            "mono_node = kitti_odometry_bag_generator.mono_vo:main",
-            "kitti_rec = kitti_odometry_bag_generator.kitti_rec:main"
+            "kitti_pub_node = kitti2rosbag2.kitti_pub:main",
+            "kitti_sub = kitti2rosbag2.kitti_sub:main",
+            "mono_node = kitti2rosbag2.mono_vo:main",
+            "kitti_rec = kitti2rosbag2.kitti_rec:main"
         ],
     },
 )

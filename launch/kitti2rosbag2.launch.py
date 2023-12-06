@@ -14,7 +14,6 @@ def generate_launch_description():
 
     rviz_config = os.path.join(
         get_package_share_directory(package_name), 
-        'rviz', 
         'kitti2rosbag2.rviz'
     )
 

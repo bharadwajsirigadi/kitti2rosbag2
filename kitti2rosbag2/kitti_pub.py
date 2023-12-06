@@ -9,8 +9,8 @@ from cv_bridge import CvBridge
 from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import Odometry, Path
-from kitti_odometry_bag_generator.utils.kitti_utils import KITTIOdometryDataset
-from kitti_odometry_bag_generator.utils.quaternion import Quaternion
+from kitti2rosbag2.utils.kitti_utils import KITTIOdometryDataset
+from kitti2rosbag2.utils.quaternion import Quaternion
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
