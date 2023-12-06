@@ -3,21 +3,23 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 import os
 
+package_name = 'kitti2rosbag2'
+
 def generate_launch_description():
 
     params_config = os.path.join(
-        get_package_share_directory('kitti_odometry_bag_generator'),
+        get_package_share_directory(package_name),
         'params.yaml'
     )
 
     rviz_config = os.path.join(
-        get_package_share_directory('kitti_odometry_bag_generator'), 
+        get_package_share_directory(package_name), 
         'rviz', 
         'kitti2rosbag2.rviz'
     )
 
     node = Node(
-        package='kitti_odometry_bag_generator',
+        package=package_name,
         namespace='',
         executable='kitti_pub_node',
         name='kitti_pub',
@@ -25,7 +27,7 @@ def generate_launch_description():
     )
 
     kitti_sub = Node(
-        package='kitti_odometry_bag_generator',
+        package=package_name,
         namespace='',
         executable='kitti_sub',
         name='kitti_sub',
@@ -40,7 +42,7 @@ def generate_launch_description():
     )
 
     kitti_rec = Node(
-        package='kitti_odometry_bag_generator',
+        package=package_name,
         namespace='',
         executable='kitti_rec',
         name='kitti_rec',

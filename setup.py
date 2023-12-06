@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 from glob import glob
 
-package_name = 'kitti_odometry_bag_generator'
+package_name = 'kitti2rosbag2'
 
 setup(
     name=package_name,
