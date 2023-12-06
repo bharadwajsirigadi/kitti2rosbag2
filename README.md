@@ -3,24 +3,17 @@
   <a href="https://github.com/bharadwajsirigadi/kitti2rosbag2/tree/main"><img src="https://img.shields.io/badge/ROS-humble-blue" /></a>
 </div>
 
-#### KITTI Odometry Dataset Folder Structure
+`kitti2rosbag2` is designed to convert the KITTI Odometry dataset to ROS2 bag format, emphasizing manual control over message publishing and bag recording. It allows more control to users who want more control over the process of converting KITTI data to ROS2 bags.
+
+## Usage
+#### 1. Clone Repository
 ```
-├── Dataset Directory
-│   ├── sequences
-│   │   ├── 00
-|   |   |   ├──calib.txt
-|   |   |   ├──image_2
-|   |   |   |   ├── 000000.png
-|   |   |   |   ├── 000001.png
-|   |   |   |   |       |
-|   |   |   ├──image_3
-|   |   |   |   ├── 000000.png
-|   |   |   |   ├── 000001.png
-|   |   |   |   |       |
-|   |   |   ├──times.txt
-|   |   |   |
+cd ~/ros2_ws/src
 ```
-### Parameters Input
+```
+git clone https://github.com/bharadwajsirigadi/kitti2rosbag2.git
+```
+#### 2. Parameters Input
 Open ```<pkg_dir>/config/params.yaml```
 Enter Following directories
 ```
@@ -48,16 +41,22 @@ kitti_rec:
   ros__parameters:
     bag_dir : '/home/parallels/Desktop/my_bag'
 ```
-### Recording bag
+#### 3. Building Package
 ```
 cd ~/ros2_ws
 ```
 ```
 colcon build kitti_odometry_bag_generator --symlink-install
 ```
+#### 4. Converting to bag
 ```
 roslaunch kitti_odometry_bag_generator kitti2rosbag2.launch
 ```
+[KITTI Odometry Dataset Folder Structure](https://github.com/bharadwajsirigadi/kitti2rosbag2/wiki)
 
-### Authors
+## Requirements
+* Python 3.x
+* ROS2 installed(tested on ROS2 humble)
+
+## Contributors
 * [Sai Bharadwaj Sirigadi](https://github.com/bharadwajsirigadi/kitti2rosbag2/graphs/contributors)
