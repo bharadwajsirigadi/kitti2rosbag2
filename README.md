@@ -9,6 +9,7 @@
 <div align="center">
   <img width="800" alt="Screenshot 2023-12-08 at 12 47 56 PM" src="https://github.com/bharadwajsirigadi/kitti2rosbag2/assets/105838762/42cd202f-2a14-418a-b576-bf5c55ea9d26">
 </div>
+Image source: (https://www.cvlibs.net/datasets/kitti/)
 
 ## Usage
 #### 1. Clone Repository
@@ -45,11 +46,11 @@ kitti_rec:
 cd ~/ros2_ws
 ```
 ```
-colcon build kitti_odometry_bag_generator --symlink-install
+colcon build kitti2rosbag2 --symlink-install
 ```
 #### 4. Converting to bag
 ```
-ros2 launch kitti_odometry_bag_generator kitti2rosbag2.launch
+ros2 launch kitti2rosbag2 kitti2rosbag2.launch
 ```
 [KITTI Odometry Dataset Folder Structure](https://github.com/bharadwajsirigadi/kitti2rosbag2/wiki)
 
