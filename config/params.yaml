@@ -1,10 +1,7 @@
-kitti_pub:
+kitti_rec:
   ros__parameters:
     sequence: 2
     data_dir: '/media/psf/SSD/DRONES_LAB/kitti_dataset/dataset'
     odom_dir: '/media/psf/SSD/DRONES_LAB/kitti_dataset/dataset_2'
+    bag_dir : '/media/psf/SSD/DRONES_LAB/kitti_bag_02'
     odom : True
-
-kitti_rec:
-  ros__parameters:
-    bag_dir : '/home/parallels/Desktop/my_bag'

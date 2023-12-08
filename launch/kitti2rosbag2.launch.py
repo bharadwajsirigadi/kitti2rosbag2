@@ -12,45 +12,14 @@ def generate_launch_description():
         'params.yaml'
     )
 
-    rviz_config = os.path.join(
-        get_package_share_directory(package_name), 
-        'kitti2rosbag2.rviz'
-    )
-
-    node = Node(
-        package=package_name,
-        namespace='',
-        executable='kitti_pub_node',
-        name='kitti_pub',
-        parameters=[params_config],
-    )
-
-    kitti_sub = Node(
-        package=package_name,
-        namespace='',
-        executable='kitti_sub',
-        name='kitti_sub',
-    )
-
-    rviz = Node(
-        package='rviz2',
-        namespace='',
-        executable='rviz2',
-        name='rviz2',
-        parameters = [rviz_config]
-    )
-
     kitti_rec = Node(
         package=package_name,
         namespace='',
-        executable='kitti_rec',
+        executable='kitti_rec_node',
         name='kitti_rec',
-        parameters=[params_config]
+        parameters=[params_config],
     )
 
     return LaunchDescription([
-        kitti_sub,
-        node,
-        rviz,
         kitti_rec,
     ])
