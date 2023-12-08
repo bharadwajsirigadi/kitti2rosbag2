@@ -18,6 +18,7 @@ def generate_launch_description():
         executable='kitti_rec_node',
         name='kitti_rec',
         parameters=[params_config],
+        output='screen'
     )
 
     return LaunchDescription([

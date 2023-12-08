@@ -5,8 +5,8 @@ from pathlib import Path
 import cv2
 
 DATA_EXTENSION = ".png"
-DATASET_DIR = "/Volumes/SSD/DRONES_LAB/kitti_dataset/dataset"
-ODOM_DIR = '/Volumes/SSD/DRONES_LAB/kitti_dataset/dataset_2'
+DATASET_DIR = "/media/psf/SSD/DRONES_LAB/kitti_dataset/dataset"
+ODOM_DIR = '/media/psf/SSD/DRONES_LAB/kitti_dataset/dataset_2'
 SEQUENCE = 0
 LEFT_IMG_FOLDER = "image_2"
 RIGHT_IMG_FOLDER = "image_3"

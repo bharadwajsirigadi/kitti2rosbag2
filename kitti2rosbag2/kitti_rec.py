@@ -19,6 +19,7 @@ from cv_bridge import CvBridge
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 from rclpy.serialization import serialize_message
 from rclpy.time import Time
+from std_msgs.msg import Header
 
 class Kitti_Odom(Node):
     def __init__(self):
@@ -72,26 +73,50 @@ class Kitti_Odom(Node):
             converter_options = rosbag2_py._storage.ConverterOptions('', '')
             self.writer.open(storage_options, converter_options)
 
-        left_img_topic_info = rosbag2_py._storage.TopicMetadata(name='/camera1/left/image_raw', type='sensor_msgs/msg/Image', serialization_format='cdr')
-        right_img_topic_info = rosbag2_py._storage.TopicMetadata(name='/camera2/right/image_raw', type='sensor_msgs/msg/Image', serialization_format='cdr')
-        odom_topic_info = rosbag2_py._storage.TopicMetadata(name='/car_1/base/odom', type='nav_msgs/msg/Odometry', serialization_format='cdr')
+        left_img_topic_info = rosbag2_py._storage.TopicMetadata(name='/camera2/left/image_raw', type='sensor_msgs/msg/Image', serialization_format='cdr')
+        right_img_topic_info = rosbag2_py._storage.TopicMetadata(name='/camera3/right/image_raw', type='sensor_msgs/msg/Image', serialization_format='cdr')
+        odom_topic_info = rosbag2_py._storage.TopicMetadata(name='/car/base/odom', type='nav_msgs/msg/Odometry', serialization_format='cdr')
+        left_cam_topic_info = rosbag2_py._storage.TopicMetadata(name='/camera2/left/camera_info', type='sensor_msgs/msg/CameraInfo', serialization_format='cdr')
+        right_cam_topic_info = rosbag2_py._storage.TopicMetadata(name='/camera3/right/camera_info', type='sensor_msgs/msg/CameraInfo', serialization_format='cdr')
 
         self.writer.create_topic(left_img_topic_info)
         self.writer.create_topic(right_img_topic_info)
         self.writer.create_topic(odom_topic_info)
+        self.writer.create_topic(left_cam_topic_info)
+        self.writer.create_topic(right_cam_topic_info)
 
         # PERKS
         self.timer = self.create_timer(0.05, self.publish_callback)
 
     def publish_callback(self):
         time = self.times_file[self.counter]
-        timestamp = int((time) * 1e9)
+        sec = int(time)
+        nanosec = int((time - int(time)) * 1e9)
+        timestamp = Time(seconds=sec, nanoseconds=nanosec)
+
+        timestamp_ns = sec + nanosec
 
         # retrieving images and creating msg
         left_image = cv2.imread(self.left_imgs[self.counter])
         right_image = cv2.imread(self.right_imgs[self.counter])
         left_img_msg = self.bridge.cv2_to_imgmsg(left_image, encoding='passthrough')
         right_img_msg = self.bridge.cv2_to_imgmsg(right_image, encoding='passthrough')
+
+        p_mtx2 = self.kitti_dataset.projection_matrix(1)
+        p_mtx3 = self.kitti_dataset.projection_matrix(2)
+
+        
+        camera_info_msg_2 = CameraInfo()
+        camera_info_msg_2.header.stamp.sec = sec
+        camera_info_msg_2.header.stamp.nanosec = nanosec
+        camera_info_msg_2.p = p_mtx2.flatten()
+        self.writer.write('/camera2/left/camera_info', serialize_message(camera_info_msg_2), timestamp_ns)
+
+        camera_info_msg_3 = CameraInfo()
+        camera_info_msg_2.header.stamp.sec = sec
+        camera_info_msg_2.header.stamp.nanosec = nanosec
+        camera_info_msg_3.p = p_mtx3.flatten()
+        self.writer.write('/camera3/right/camera_info', serialize_message(camera_info_msg_3), timestamp_ns)       
 
         odom_msg = Odometry()
         if self.odom == True:
@@ -105,12 +130,11 @@ class Kitti_Odom(Node):
             odom_msg.pose.pose.orientation.y = a[1]
             odom_msg.pose.pose.orientation.z = a[2]
             odom_msg.pose.pose.orientation.w = a[3]
-            self.writer.write('/car_1/base/odom', serialize_message(odom_msg), timestamp)
-
+            self.writer.write('/car/base/odom', serialize_message(odom_msg), timestamp_ns)
 
         # Recording Bag
-        self.writer.write('/camera1/left/image_raw', serialize_message(left_img_msg), timestamp)
-        self.writer.write('/camera2/right/image_raw', serialize_message(right_img_msg), timestamp)
+        self.writer.write('/camera2/left/image_raw', serialize_message(left_img_msg), timestamp_ns)
+        self.writer.write('/camera3/right/image_raw', serialize_message(right_img_msg), timestamp_ns)
 
         self.get_logger().info(f'{self.counter}-Images Processed')
         if self.counter >= self.counter_limit:
