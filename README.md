@@ -3,7 +3,7 @@
   <a href="https://github.com/bharadwajsirigadi/kitti2rosbag2/tree/main"><img src="https://img.shields.io/badge/ROS-humble-blue" /></a>
 </div>
 
-`kitti2rosbag2` is designed to convert the KITTI Odometry dataset to ROS2 bag format, emphasizing manual control over message publishing and bag recording. It allows more control to users who want more control over the process of converting KITTI data to ROS2 bags.
+`kitti2rosbag2` is designed to convert the KITTI Odometry dataset to ROS2 bag format, emphasizing manual control over message publishing and bag recording.
 
 ## KITTI car setup
 <div align="center">
@@ -55,7 +55,8 @@ ros2 launch kitti2rosbag2 kitti2rosbag2.launch
 [KITTI Odometry Dataset Folder Structure](https://github.com/bharadwajsirigadi/kitti2rosbag2/wiki)
 
 ## ROS Topics Info
-* `car/base/odom`--> Odometry of Car
+* `car/base/odom`--> Odometry of Car.
+* `car/base/odom_path`--> Ground Truth path of Car.
 * `camera2/left/image_raw`--> Color Images from Left Camera.
 * `camera3/right/image_raw`--> Color Images from Right Camera.
 * `camera2/left/camera_info`--> Left Camera Information.
@@ -64,6 +65,9 @@ ros2 launch kitti2rosbag2 kitti2rosbag2.launch
 ## Requirements
 * Python 3.x
 * ROS2 installed(tested on ROS2 humble)
+
+### Note:
+Ground Truth-Odometry data is available for sequences(1-10) in KITTI dataset.
 
 ## Contributors
 * [Sai Bharadwaj Sirigadi](https://github.com/bharadwajsirigadi/kitti2rosbag2/graphs/contributors)
