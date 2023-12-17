@@ -46,7 +46,7 @@ kitti_rec:
 cd ~/ros2_ws
 ```
 ```
-colcon build kitti2rosbag2 --symlink-install
+colcon build --packages-select kitti2rosbag2 --symlink-install
 ```
 #### 4. Converting to bag
 ```
