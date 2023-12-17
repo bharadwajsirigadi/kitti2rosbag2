@@ -13,16 +13,8 @@ from geometry_msgs.msg import TransformStamped, PoseStamped
 from kitti2rosbag2.utils.kitti_utils import KITTIOdometryDataset
 from kitti2rosbag2.utils.quaternion import Quaternion
 from nav_msgs.msg import Odometry
-from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
-from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 from rclpy.serialization import serialize_message
-from rclpy.time import Time
-from std_msgs.msg import Header
-from std_msgs.msg import Header
-from tf2_msgs.msg import TFMessage
-from geometry_msgs.msg import Transform
-import tf2_ros
 
 class Kitti_Odom(Node):
     def __init__(self):
@@ -79,23 +71,27 @@ class Kitti_Odom(Node):
         left_img_topic_info = rosbag2_py._storage.TopicMetadata(name='/camera2/left/image_raw', type='sensor_msgs/msg/Image', serialization_format='cdr')
         right_img_topic_info = rosbag2_py._storage.TopicMetadata(name='/camera3/right/image_raw', type='sensor_msgs/msg/Image', serialization_format='cdr')
         odom_topic_info = rosbag2_py._storage.TopicMetadata(name='/car/base/odom', type='nav_msgs/msg/Odometry', serialization_format='cdr')
+        path_topic_info = rosbag2_py._storage.TopicMetadata(name='/car/base/odom_path', type='nav_msgs/msg/Path', serialization_format='cdr')
         left_cam_topic_info = rosbag2_py._storage.TopicMetadata(name='/camera2/left/camera_info', type='sensor_msgs/msg/CameraInfo', serialization_format='cdr')
         right_cam_topic_info = rosbag2_py._storage.TopicMetadata(name='/camera3/right/camera_info', type='sensor_msgs/msg/CameraInfo', serialization_format='cdr')
 
         self.writer.create_topic(left_img_topic_info)
         self.writer.create_topic(right_img_topic_info)
         self.writer.create_topic(odom_topic_info)
+        self.writer.create_topic(path_topic_info)
         self.writer.create_topic(left_cam_topic_info)
         self.writer.create_topic(right_cam_topic_info)
+
+        # path msg
+        self.p_msg = Path()
 
         # initialization
         self.timer = self.create_timer(0.05, self.rec_callback)
 
+
     def rec_callback(self):
         time = self.times_file[self.counter]
-        sec = int(time)
-        nanosec = int((time - int(time)) * 1e9)
-        timestamp_ns = sec + nanosec
+        timestamp_ns = int(time * 1e9) # nanoseconds
 
         # retrieving images and writing to bag
         left_image = cv2.imread(self.left_imgs[self.counter])
@@ -107,9 +103,9 @@ class Kitti_Odom(Node):
 
         # retrieving project mtx and writing to bag
         p_mtx2 = self.kitti_dataset.projection_matrix(1)
-        self.rec_camera_info(p_mtx2, '/camera2/left/camera_info', sec, nanosec)
+        self.rec_camera_info(p_mtx2, '/camera2/left/camera_info', timestamp_ns)
         p_mtx3 = self.kitti_dataset.projection_matrix(2)
-        self.rec_camera_info(p_mtx3, '/camera3/right/camera_info', sec, nanosec)
+        self.rec_camera_info(p_mtx3, '/camera3/right/camera_info', timestamp_ns)
 
         if self.odom == True:
             translation = self.ground_truth[self.counter][:3,3]
@@ -122,14 +118,12 @@ class Kitti_Odom(Node):
             self.get_logger().info('All images and poses published. Stopping...')
             rclpy.shutdown()
             self.timer.cancel()
+
         self.counter += 1
         return
     
-    def rec_camera_info(self, mtx, topic, sec, nanosec):
-        timestamp = sec + nanosec
+    def rec_camera_info(self, mtx, topic, timestamp):
         camera_info_msg_2 = CameraInfo()
-        camera_info_msg_2.header.stamp.sec = sec
-        camera_info_msg_2.header.stamp.nanosec = nanosec
         camera_info_msg_2.p = mtx.flatten()
         self.writer.write(topic, serialize_message(camera_info_msg_2), timestamp)   
         return
@@ -146,6 +140,16 @@ class Kitti_Odom(Node):
         odom_msg.pose.pose.orientation.z = quaternion[2]
         odom_msg.pose.pose.orientation.w = quaternion[3]
         self.writer.write('/car/base/odom', serialize_message(odom_msg), timestamp)
+        self.rec_path_msg(odom_msg, timestamp)
+        return
+    
+    def rec_path_msg(self, odom_msg, timestamp):
+        pose= PoseStamped()
+        pose.pose = odom_msg.pose.pose
+        pose.header.frame_id = "odom"
+        self.p_msg.poses.append(pose)
+        self.p_msg.header.frame_id = "map"
+        self.writer.write('/car/base/odom_path', serialize_message(self.p_msg), timestamp)
         return
 
 def main(args=None):
