@@ -10,7 +10,6 @@ from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge
 from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import TransformStamped, PoseStamped
-from nav_msgs.msg import Odometry, Path
 from kitti2rosbag2.utils.kitti_utils import KITTIOdometryDataset
 from kitti2rosbag2.utils.quaternion import Quaternion
 from nav_msgs.msg import Odometry
@@ -20,12 +19,16 @@ from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 from rclpy.serialization import serialize_message
 from rclpy.time import Time
 from std_msgs.msg import Header
+from std_msgs.msg import Header
+from tf2_msgs.msg import TFMessage
+from geometry_msgs.msg import Transform
+import tf2_ros
 
 class Kitti_Odom(Node):
     def __init__(self):
         super().__init__("kitti_rec")
 
-        # PARAMETERS
+        # parameters
         self.declare_parameters(
             namespace='',
             parameters=[
@@ -63,7 +66,7 @@ class Kitti_Odom(Node):
                 rclpy.shutdown()
                 return
 
-        # ROSBAG WRITER
+        # rosbag writer
         self.writer = rosbag2_py.SequentialWriter()
         if os.path.exists(bag_dir):
             self.get_logger().info(f'The directory {bag_dir} already exists. Shutting down...')
@@ -85,56 +88,34 @@ class Kitti_Odom(Node):
         self.writer.create_topic(left_cam_topic_info)
         self.writer.create_topic(right_cam_topic_info)
 
-        # PERKS
-        self.timer = self.create_timer(0.05, self.publish_callback)
+        # initialization
+        self.timer = self.create_timer(0.05, self.rec_callback)
 
-    def publish_callback(self):
+    def rec_callback(self):
         time = self.times_file[self.counter]
         sec = int(time)
         nanosec = int((time - int(time)) * 1e9)
-        timestamp = Time(seconds=sec, nanoseconds=nanosec)
-
         timestamp_ns = sec + nanosec
 
-        # retrieving images and creating msg
+        # retrieving images and writing to bag
         left_image = cv2.imread(self.left_imgs[self.counter])
         right_image = cv2.imread(self.right_imgs[self.counter])
         left_img_msg = self.bridge.cv2_to_imgmsg(left_image, encoding='passthrough')
+        self.writer.write('/camera2/left/image_raw', serialize_message(left_img_msg), timestamp_ns)
         right_img_msg = self.bridge.cv2_to_imgmsg(right_image, encoding='passthrough')
+        self.writer.write('/camera3/right/image_raw', serialize_message(right_img_msg), timestamp_ns)
 
+        # retrieving project mtx and writing to bag
         p_mtx2 = self.kitti_dataset.projection_matrix(1)
+        self.rec_camera_info(p_mtx2, '/camera2/left/camera_info', sec, nanosec)
         p_mtx3 = self.kitti_dataset.projection_matrix(2)
+        self.rec_camera_info(p_mtx3, '/camera3/right/camera_info', sec, nanosec)
 
-        
-        camera_info_msg_2 = CameraInfo()
-        camera_info_msg_2.header.stamp.sec = sec
-        camera_info_msg_2.header.stamp.nanosec = nanosec
-        camera_info_msg_2.p = p_mtx2.flatten()
-        self.writer.write('/camera2/left/camera_info', serialize_message(camera_info_msg_2), timestamp_ns)
-
-        camera_info_msg_3 = CameraInfo()
-        camera_info_msg_2.header.stamp.sec = sec
-        camera_info_msg_2.header.stamp.nanosec = nanosec
-        camera_info_msg_3.p = p_mtx3.flatten()
-        self.writer.write('/camera3/right/camera_info', serialize_message(camera_info_msg_3), timestamp_ns)       
-
-        odom_msg = Odometry()
         if self.odom == True:
             translation = self.ground_truth[self.counter][:3,3]
             quaternion = Quaternion()
-            a = quaternion.rotationmtx_to_quaternion(self.ground_truth[self.counter][:3, :3])
-            odom_msg.pose.pose.position.z = -translation[1]
-            odom_msg.pose.pose.position.y = -translation[2] 
-            odom_msg.pose.pose.position.x = -translation[0] 
-            odom_msg.pose.pose.orientation.x = a[0]
-            odom_msg.pose.pose.orientation.y = a[1]
-            odom_msg.pose.pose.orientation.z = a[2]
-            odom_msg.pose.pose.orientation.w = a[3]
-            self.writer.write('/car/base/odom', serialize_message(odom_msg), timestamp_ns)
-
-        # Recording Bag
-        self.writer.write('/camera2/left/image_raw', serialize_message(left_img_msg), timestamp_ns)
-        self.writer.write('/camera3/right/image_raw', serialize_message(right_img_msg), timestamp_ns)
+            quaternion = quaternion.rotationmtx_to_quaternion(self.ground_truth[self.counter][:3, :3])
+            self.rec_odom_msg(translation, quaternion, timestamp_ns)
 
         self.get_logger().info(f'{self.counter}-Images Processed')
         if self.counter >= self.counter_limit:
@@ -142,6 +123,29 @@ class Kitti_Odom(Node):
             rclpy.shutdown()
             self.timer.cancel()
         self.counter += 1
+        return
+    
+    def rec_camera_info(self, mtx, topic, sec, nanosec):
+        timestamp = sec + nanosec
+        camera_info_msg_2 = CameraInfo()
+        camera_info_msg_2.header.stamp.sec = sec
+        camera_info_msg_2.header.stamp.nanosec = nanosec
+        camera_info_msg_2.p = mtx.flatten()
+        self.writer.write(topic, serialize_message(camera_info_msg_2), timestamp)   
+        return
+    
+    def rec_odom_msg(self, translation, quaternion, timestamp):
+        odom_msg = Odometry()
+        odom_msg.header.frame_id = "map"
+        odom_msg.child_frame_id = "odom"
+        odom_msg.pose.pose.position.z = -translation[1]
+        odom_msg.pose.pose.position.y = -translation[2] 
+        odom_msg.pose.pose.position.x = -translation[0] 
+        odom_msg.pose.pose.orientation.x = quaternion[0]
+        odom_msg.pose.pose.orientation.y = quaternion[1]
+        odom_msg.pose.pose.orientation.z = quaternion[2]
+        odom_msg.pose.pose.orientation.w = quaternion[3]
+        self.writer.write('/car/base/odom', serialize_message(odom_msg), timestamp)
         return
 
 def main(args=None):
